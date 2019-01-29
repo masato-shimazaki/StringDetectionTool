@@ -8,7 +8,7 @@
             "command": "g++",
             "type": "shell",
             "args": [
-                "project/main.cpp",
+                "src/main.cpp",
                 "-g",
                 "-O0",
             ],

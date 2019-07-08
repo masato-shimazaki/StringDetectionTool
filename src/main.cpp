@@ -66,13 +66,16 @@ int main(int argc, char *args[])
 
     std::string str;
 
+    // unsigned long long __index = 0;
     for (std::map<wchar_t, wchar_t>::iterator it = map.begin(); it != map.end(); it++)
     {
-        char chr[8];
+        char chr[9];
         memset(chr, 0, sizeof(chr));
 
-        wcstombs(chr, &it->second, sizeof(chr));
-        std::cout << &it->second << std::endl;
+        wchar_t wt = it->second;
+        wcstombs(chr, &wt, sizeof(chr));
+        // std::cout << "[" << __index << "]" << wt << "|" << chr[0] << chr[1] << chr[2] << chr[3] << chr[4] << chr[5] << chr[6] << chr[7] << chr[8] << std::endl;
+        // __index++;
 
         for (int i = 0; i < sizeof(chr); i++)
         {
@@ -91,19 +94,16 @@ int main(int argc, char *args[])
 
 int func(FILE *fp, std::map<wchar_t, wchar_t> &map)
 {
-    const char cr = '\r';
-    wchar_t CR;
-    mbstowcs(&CR, &cr, sizeof(CR));
-
-    const char lf = '\n';
-    wchar_t LF;
-    mbstowcs(&LF, &lf, sizeof(LF));
+    wchar_t CR = L'\r';
+    wchar_t LF = L'\n';
 
     char buff[1024];
+    memset(buff, 0, sizeof(buff));
     while (fgets(buff, sizeof(buff), fp) != NULL)
     {
         wchar_t wbuff[1024];
         memset(wbuff, 0, sizeof(wbuff));
+
         int result = mbstowcs(wbuff, buff, sizeof(buff));
 
         for (int i = 0; i < result; i++)
@@ -119,6 +119,7 @@ int func(FILE *fp, std::map<wchar_t, wchar_t> &map)
             {
                 continue;
             }
+
             map.insert(std::make_pair(wc, wc));
         }
     }

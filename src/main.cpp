@@ -4,123 +4,101 @@
 #include <vector>
 #include <string>
 #include <locale.h>
+#include <cstring>
 
-int func(FILE *fp, std::map<wchar_t, wchar_t> &map);
+int processFile(FILE *fp, std::map<wchar_t, wchar_t> &charMap);
 
-int main(int argc, char *args[])
+int main(int argc, char *argv[])
 {
     if (argc <= 1)
     {
+        std::cerr << "Usage: " << argv[0] << " -o output_filename -i input_filename(s)" << std::endl;
         return -1;
     }
 
-    std::string out_filename;
-    std::vector<std::string> ipts;
+    std::string outputFilename;
+    std::vector<std::string> inputFiles;
 
     for (int i = 1; i < argc; i++)
     {
-        std::string str = args[i];
-        for (size_t space = str.find_first_of(" "); space != std::string::npos; space = str.find_first_of(" "))
+        std::string arg = argv[i];
+        arg.erase(std::remove(arg.begin(), arg.end(), ' '), arg.end());
+
+        std::cout << arg << std::endl;
+
+        std::string name = arg.substr(2);
+        std::string prefix = arg.substr(0, 2);
+
+        if (prefix == "-o")
         {
-            str.erase(space, 1);
+            outputFilename = name;
         }
-
-        std::cout << str << std::endl;
-
-        std::string name = str.substr(2, str.length());
-
-        std::string prefix = str.substr(0, 2);
-
-        if (prefix.find("-o") != std::string::npos)
+        else if (prefix == "-i")
         {
-            out_filename = name;
-        }
-
-        if (prefix.find("-i") != std::string::npos)
-        {
-            ipts.push_back(name);
+            inputFiles.push_back(name);
         }
     }
 
-    setlocale(LC_CTYPE, "ja_JP.UTF-8");
-
-    FILE *out_fp = fopen(out_filename.c_str(), "w+");
-    if (out_fp == NULL)
+    if (setlocale(LC_CTYPE, "ja_JP.UTF-8") == NULL)
     {
+        std::cerr << "Failed to set locale to ja_JP.UTF-8" << std::endl;
         return -1;
     }
 
-    std::map<wchar_t, wchar_t> map;
-
-    for (int i = 0; i < ipts.size(); i++)
+    FILE *outFp = fopen(outputFilename.c_str(), "w+");
+    if (outFp == NULL)
     {
-        FILE *fp = fopen(ipts.at(i).c_str(), "r");
+        std::cerr << "Failed to open output file: " << outputFilename << std::endl;
+        return -1;
+    }
+
+    std::map<wchar_t, wchar_t> charMap;
+
+    for (const auto &inputFile : inputFiles)
+    {
+        FILE *fp = fopen(inputFile.c_str(), "r");
         if (fp == NULL)
         {
+            std::cerr << "Failed to open input file: " << inputFile << std::endl;
             continue;
         }
 
-        func(fp, map);
+        processFile(fp, charMap);
         fclose(fp);
     }
 
-    std::string str;
-
-    // unsigned long long __index = 0;
-    for (std::map<wchar_t, wchar_t>::iterator it = map.begin(); it != map.end(); it++)
+    for (const auto &pair : charMap)
     {
-        char chr[9];
-        memset(chr, 0, sizeof(chr));
-
-        wchar_t wt = it->second;
-        wcstombs(chr, &wt, sizeof(chr));
-        // std::cout << "[" << __index << "]" << wt << "|" << chr[0] << chr[1] << chr[2] << chr[3] << chr[4] << chr[5] << chr[6] << chr[7] << chr[8] << std::endl;
-        // __index++;
-
-        for (int i = 0; i < sizeof(chr); i++)
-        {
-            if (chr[i] == 0)
-            {
-                break;
-            }
-            putc(chr[i], out_fp);
-        }
+        char mbStr[9] = {0};
+        wcstombs(mbStr, &pair.second, sizeof(mbStr));
+        fputs(mbStr, outFp);
     }
 
-    fclose(out_fp);
-
+    fclose(outFp);
     return 0;
 }
 
-int func(FILE *fp, std::map<wchar_t, wchar_t> &map)
+int processFile(FILE *fp, std::map<wchar_t, wchar_t> &charMap)
 {
-    wchar_t CR = L'\r';
-    wchar_t LF = L'\n';
+    const wchar_t CR = L'\r';
+    const wchar_t LF = L'\n';
 
-    char buff[1024];
-    memset(buff, 0, sizeof(buff));
-    while (fgets(buff, sizeof(buff), fp) != NULL)
+    char buffer[1024] = {0};
+    while (fgets(buffer, sizeof(buffer), fp) != NULL)
     {
-        wchar_t wbuff[1024];
-        memset(wbuff, 0, sizeof(wbuff));
+        wchar_t wbuffer[1024] = {0};
+        int length = mbstowcs(wbuffer, buffer, sizeof(buffer) / sizeof(char));
 
-        int result = mbstowcs(wbuff, buff, sizeof(buff));
-
-        for (int i = 0; i < result; i++)
+        for (int i = 0; i < length; ++i)
         {
-            wchar_t wc = wbuff[i];
+            wchar_t wc = wbuffer[i];
 
-            if (map.find(wc) != map.end())
+            if (wc == CR || wc == LF || charMap.count(wc))
             {
                 continue;
             }
 
-            if (wc == CR || wc == LF)
-            {
-                continue;
-            }
-
-            map.insert(std::make_pair(wc, wc));
+            charMap[wc] = wc;
         }
     }
     return 0;

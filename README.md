@@ -1,4 +1,4 @@
-# string-detection-output-file
+# StringDetectionTool
 
 This project provides a simple setup for building and debugging a C++ program using Visual Studio Code. Follow the instructions below to compile and build your C++ project.
 
